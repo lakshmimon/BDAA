@@ -10,15 +10,6 @@ from sklearn.ensemble import RandomForestClassifier
 import os
 import warnings
 
-# Try to import imblearn, usually needs 'pip install imbalanced-learn'
-try:
-    from imblearn.over_sampling import SMOTE
-    from imblearn.pipeline import Pipeline as ImbPipeline
-except ImportError:
-    print("⚠️ Error: 'imbalanced-learn' library missing.")
-    print("Please run: pip install imbalanced-learn")
-    exit()
-
 # Suppress all future warnings for cleaner output
 warnings.filterwarnings("ignore")
 
@@ -157,7 +148,7 @@ def plot_visualizations(data):
     
     print("\n[Viz] Preparing Visualizations... Windows will open simultaneously.")
 
-    # --- GRAPH 1: Target Imbalance Distribution (Pie Chart) ---
+    # GRAPH 1: Target Imbalance Distribution (Pie Chart)
     plt.figure(figsize=(6, 6))
     counts = data['is_fraud'].value_counts()
     labels = ['Legitimate (0)', 'Fraud (1)']
@@ -168,7 +159,7 @@ def plot_visualizations(data):
     plt.title('1. Transaction Class Distribution (Imbalance)')
     print("   -> Graph 1 (Pie Chart) prepared.")
 
-    # --- GRAPH 2: Transaction Amount Distribution (Box and Histogram) ---
+    # GRAPH 2: Transaction Amount Distribution (Box and Histogram)
     plt.figure(figsize=(16, 6))
     
     # Box Plot: Comparing Amount by Class
@@ -186,7 +177,7 @@ def plot_visualizations(data):
     plt.tight_layout()
     print("   -> Graph 2 (Distributions) prepared.")
 
-    # --- GRAPH 3: Temporal Analysis (Fraud Frequency) ---
+    # GRAPH 3: Temporal Analysis (Fraud Frequency)
     
     # Aggregate fraud counts by hour and day of week
     fraud_by_hour = data.groupby('hour')['is_fraud'].sum().reset_index()
@@ -214,7 +205,7 @@ def plot_visualizations(data):
     plt.tight_layout()
     print("   -> Graph 3 (Time Analysis) prepared.")
 
-    # --- GRAPH 4: Correlation Heatmap ---
+    #  GRAPH 4: Correlation Heatmap 
     
     # Select only numerical columns for correlation calculation
     numerical_data = data.select_dtypes(include=np.number).drop(columns=['log_amt', 'hour', 'day_of_week'], errors='ignore')
