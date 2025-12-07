@@ -10,6 +10,15 @@ from sklearn.ensemble import RandomForestClassifier
 import os
 import warnings
 
+# Try to import imblearn, usually needs 'pip install imbalanced-learn'
+try:
+    from imblearn.over_sampling import SMOTE
+    from imblearn.pipeline import Pipeline as ImbPipeline
+except ImportError:
+    print("⚠️ Error: 'imbalanced-learn' library missing.")
+    print("Please run: pip install imbalanced-learn")
+    exit()
+
 # Suppress all future warnings for cleaner output
 warnings.filterwarnings("ignore")
 
@@ -28,7 +37,13 @@ def generate_mock_data(num_rows=10000):
         'amt': np.random.lognormal(mean=2.5, sigma=1.0, size=num_rows).round(2),
         'city_pop': np.random.randint(5000, 1000000, num_rows),
         'is_fraud': np.random.choice([0, 1], num_rows, p=[0.998, 0.002]), # Highly imbalanced
-        'age': np.random.randint(20, 70, num_rows)
+        'age': np.random.randint(20, 70, num_rows),
+        'gender': np.random.choice(['M', 'F'], num_rows),
+        'city': np.random.choice(['Columbus', 'Cleveland', 'Cincinnati'], num_rows),
+        'state': ['OH'] * num_rows,
+        'lat': np.random.uniform(38, 42, num_rows),
+        'long': np.random.uniform(-85, -80, num_rows),
+        'Unnamed: 0': range(num_rows)
     })
     
     # Introduce patterns for fraud
@@ -41,7 +56,8 @@ def load_and_engineer_data():
     """Load data or generate mock data, then perform feature engineering."""
     file_path = 'fraudTrain.csv'
     if os.path.exists(file_path):
-        data = pd.read_csv(file_path)
+        # NOTE: Using nrows=10000 for quick testing. Remove this argument for full training.
+        data = pd.read_csv(file_path, nrows=10000)
     else:
         data = generate_mock_data()
         
@@ -62,7 +78,7 @@ def load_and_engineer_data():
     columns_to_drop = [
         'trans_date_trans_time', 'cc_num', 'merchant', 'first', 'last', 
         'street', 'zip', 'job', 'dob', 'trans_num', 'unix_time', 
-        'merch_lat', 'merch_long' # Example columns typically dropped for initial models
+        'merch_lat', 'merch_long' 
     ]
     data = data.drop(columns=columns_to_drop, errors='ignore')
 
@@ -142,13 +158,15 @@ def build_and_train_model(data):
     print(f"False Positives (Legitimate Flagged): {fp}")
     print(f"True Negatives (Legitimate Correctly Ignored): {tn}")
     print(f"Goal: Minimize FN, maximize TP.")
+    
+    return model_pipeline
 
 def plot_visualizations(data):
     """Generates the four requested visualizations."""
     
     print("\n[Viz] Preparing Visualizations... Windows will open simultaneously.")
 
-    # GRAPH 1: Target Imbalance Distribution (Pie Chart)
+    # --- GRAPH 1: Target Imbalance Distribution (Pie Chart) ---
     plt.figure(figsize=(6, 6))
     counts = data['is_fraud'].value_counts()
     labels = ['Legitimate (0)', 'Fraud (1)']
@@ -159,7 +177,7 @@ def plot_visualizations(data):
     plt.title('1. Transaction Class Distribution (Imbalance)')
     print("   -> Graph 1 (Pie Chart) prepared.")
 
-    # GRAPH 2: Transaction Amount Distribution (Box and Histogram)
+    # --- GRAPH 2: Transaction Amount Distribution (Box and Histogram) ---
     plt.figure(figsize=(16, 6))
     
     # Box Plot: Comparing Amount by Class
@@ -177,7 +195,7 @@ def plot_visualizations(data):
     plt.tight_layout()
     print("   -> Graph 2 (Distributions) prepared.")
 
-    # GRAPH 3: Temporal Analysis (Fraud Frequency)
+    # --- GRAPH 3: Temporal Analysis (Fraud Frequency) ---
     
     # Aggregate fraud counts by hour and day of week
     fraud_by_hour = data.groupby('hour')['is_fraud'].sum().reset_index()
@@ -205,7 +223,7 @@ def plot_visualizations(data):
     plt.tight_layout()
     print("   -> Graph 3 (Time Analysis) prepared.")
 
-    #  GRAPH 4: Correlation Heatmap 
+    # --- GRAPH 4: Correlation Heatmap ---
     
     # Select only numerical columns for correlation calculation
     numerical_data = data.select_dtypes(include=np.number).drop(columns=['log_amt', 'hour', 'day_of_week'], errors='ignore')
@@ -228,6 +246,56 @@ def plot_visualizations(data):
     print("[Viz] Opening all windows now. Close ALL windows to proceed to Model Training.")
     plt.show() 
 
+def demo_prediction(model_pipeline):
+    """
+    Simulates a live transaction to show judges the model in action.
+    """
+    print("\n" + "="*50)
+    print("--- 🕵️ JUDGE'S LIVE DEMO (Simulation) ---")
+    print("="*50)
+    print("Simulating a new, suspicious transaction input...")
+    
+    # Create a single fake transaction dataframe
+    # We now include ALL columns that exist in the training data to prevent errors
+    new_transaction = pd.DataFrame({
+        'Unnamed: 0': [0],          # Dummy index
+        'category': ['online_retail'], 
+        'amt': [1500.00],           
+        'gender': ['M'],            # Dummy gender
+        'city': ['Columbus'],       # Dummy city
+        'state': ['OH'],            # Dummy state
+        'lat': [39.96],             # Dummy latitude
+        'long': [-83.00],           # Dummy longitude
+        'city_pop': [50000],        
+        'age': [30],
+        'hour': [3],                # 3 AM (Unusual time)
+        'day_of_week': [1],         # Tuesday
+        'is_high_risk_category': [1] # Manually setting our feature flag
+    })
+    
+    print(f"\nTransaction Details:")
+    print(f" - Amount: $1500.00")
+    print(f" - Category: Online Retail")
+    print(f" - Time: 3:00 AM")
+    
+    # Make Prediction
+    try:
+        prediction = model_pipeline.predict(new_transaction)[0]
+        probability = model_pipeline.predict_proba(new_transaction)[0][1]
+        
+        print("\n--- MODEL RESULT ---")
+        if prediction == 1:
+            print(f"🚨 ALERT: FRAUD DETECTED 🚨")
+        else:
+            print(f"✅ Transaction Approved (Legitimate)")
+            
+        print(f"Risk Score (Probability): {probability * 100:.2f}%")
+        print("="*50 + "\n")
+        
+    except Exception as e:
+        print(f"\n[Demo Error] Could not run prediction: {e}")
+        print("Ensure the input features match the training data exactly.")
+
 
 if __name__ == '__main__':
     # 1. Load Data and Engineer Basic Features
@@ -237,4 +305,8 @@ if __name__ == '__main__':
     plot_visualizations(df)
     
     # 3. Build and Train Machine Learning Model
-    build_and_train_model(df)
+    # We now capture the returned pipeline model
+    trained_model = build_and_train_model(df)
+    
+    # 4. Run the Judge's Demo
+    demo_prediction(trained_model)
