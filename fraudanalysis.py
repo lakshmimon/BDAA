@@ -15,7 +15,7 @@ try:
     from imblearn.over_sampling import SMOTE
     from imblearn.pipeline import Pipeline as ImbPipeline
 except ImportError:
-    print("⚠️ Error: 'imbalanced-learn' library missing.")
+    print("Error: 'imbalanced-learn' library missing.")
     print("Please run: pip install imbalanced-learn")
     exit()
 
@@ -138,7 +138,7 @@ def build_and_train_model(data):
     y_proba = model_pipeline.predict_proba(X_test)[:, 1]
 
     print("\n" + "="*50)
-    print("🔥 Model Evaluation on Test Set (After SMOTE & Training) 🔥")
+    print(" Model Evaluation on Test Set (After SMOTE & Training)")
     print("="*50)
     print("--- Classification Report (Focus on Recall & Precision) ---")
     print(classification_report(y_test, y_pred, target_names=['Legitimate (0)', 'Fraud (1)']))
@@ -251,7 +251,7 @@ def demo_prediction(model_pipeline):
     Simulates a live transaction to show judges the model in action.
     """
     print("\n" + "="*50)
-    print("--- 🕵️ JUDGE'S LIVE DEMO (Simulation) ---")
+    print("---  JUDGE'S LIVE DEMO (Simulation) ---")
     print("="*50)
     print("Simulating a new, suspicious transaction input...")
     
@@ -285,7 +285,7 @@ def demo_prediction(model_pipeline):
         
         print("\n--- MODEL RESULT ---")
         if prediction == 1:
-            print(f"🚨 ALERT: FRAUD DETECTED 🚨")
+            print(f" ALERT: FRAUD DETECTED ")
         else:
             print(f"✅ Transaction Approved (Legitimate)")
             
